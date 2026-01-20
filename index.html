@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Photo Framer</title>
+    <style>
+        :root { --primary: #6366f1; --bg: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; width: 90%; max-width: 500px; }
+        
+        /* The Checkerboard helps you see transparency */
+        #canvas-wrap { 
+            position: relative; 
+            margin: 20px auto; 
+            background-color: #eee;
+            background-image: linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%);
+            background-size: 20px 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            line-height: 0;
+            border: 2px solid #e2e8f0;
+        }
+        canvas { max-width: 100%; height: auto; cursor: grab; }
+        
+        .controls { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .btn-download { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-download:hover { opacity: 0.9; transform: translateY(-1px); }
+        .upload-label { display: block; background: #e2e8f0; padding: 10px; border-radius: 8px; cursor: pointer; margin-bottom: 10px; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Photo Framer</h2>
+    <p style="color: #64748b; font-size: 14px;">Upload a photo to see it in your frame</p>
+
+    <label class="upload-label" for="upload">📁 Choose Photo</label>
+    <input type="file" id="upload" accept="image/*" style="display:none">
+
+    <div id="canvas-wrap">
+        <canvas id="framerCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <label style="font-size: 12px; text-align: left;">Zoom Photo</label>
+        <input type="range" id="zoom" min="0.1" max="3" step="0.01" value="1">
+        <button id="download" class="btn-download">Download Result</button>
+    </div>
+    <p id="status" style="color: red; font-size: 12px;"></p>
+</div>
+
+<script>
+    const canvas = document.getElementById('framerCanvas');
+    const ctx = canvas.getContext('2d');
+    const zoomInput = document.getElementById('zoom');
+    const status = document.getElementById('status');
+
+    let frameImg = new Image();
+    frameImg.src = 'frame.png'; // Make sure your file is named exactly this
+
+    let userImg = new Image();
+    let imgLoaded = false;
+    let zoom = 1;
+
+    // 1. Load Frame
+    frameImg.onload = () => {
+        canvas.width = frameImg.width;
+        canvas.height = frameImg.height;
+        draw();
+    };
+    frameImg.onerror = () => {
+        status.innerText = "Error: 'frame.png' not found in folder.";
+    };
+
+    // 2. Handle Upload
+    document.getElementById('upload').addEventListener('change', (e) => {
+        const reader = new FileReader();
+        reader.onload = (f) => {
+            userImg.onload = () => {
+                imgLoaded = true;
+                draw();
+            };
+            userImg.src = f.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    });
+
+    // 3. Draw Function
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (imgLoaded) {
+            const z = parseFloat(zoomInput.value);
+            const w = userImg.width * z;
+            const h = userImg.height * z;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+            ctx.drawImage(userImg, x, y, w, h);
+        }
+
+        // Always draw frame on top
+        ctx.drawImage(frameImg, 0, 0);
+    }
+
+    zoomInput.addEventListener('input', draw);
+
+    // 4. Download
+    document.getElementById('download').addEventListener('click', () => {
+        if (!imgLoaded) return alert("Please upload a photo first!");
+        const link = document.createElement('a');
+        link.download = 'my-framed-photo.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+</script>
+
+</body>
+</html>
